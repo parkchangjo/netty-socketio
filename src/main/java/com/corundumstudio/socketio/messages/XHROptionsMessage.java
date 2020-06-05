@@ -15,7 +15,15 @@
  */
 package com.corundumstudio.socketio.messages;
 
+import com.corundumstudio.socketio.protocol.PacketEncoder;
+import io.netty.buffer.ByteBuf;
+import io.netty.channel.ChannelHandlerContext;
+import io.netty.channel.ChannelPromise;
+import io.netty.handler.codec.http.*;
+
 import java.util.UUID;
+
+import static io.netty.handler.codec.http.HttpVersion.HTTP_1_1;
 
 public class XHROptionsMessage extends XHRPostMessage {
 
@@ -23,4 +31,18 @@ public class XHROptionsMessage extends XHRPostMessage {
         super(origin, sessionId);
     }
 
+    public void messageWrite(Object message, ChannelHandlerContext ctx, ChannelPromise promise, PacketEncoder encoder) throws Exception {
+        XHROptionsMessage xhrOptionsMessage = (XHROptionsMessage) message;
+        HttpResponse res = new DefaultHttpResponse(HTTP_1_1, HttpResponseStatus.OK);
+
+        res.headers().add(HttpHeaderNames.SET_COOKIE, "io=" + xhrOptionsMessage.getSessionId())
+                .add(HttpHeaderNames.CONNECTION, HttpHeaderValues.KEEP_ALIVE)
+                .add(HttpHeaderNames.ACCESS_CONTROL_ALLOW_HEADERS, HttpHeaderNames.CONTENT_TYPE);
+
+        String origin = ctx.channel().attr(ORIGIN).get();
+        addOriginHeaders(origin, res);
+
+        ByteBuf out = encoder.allocateBuffer(ctx.alloc());
+        sendMessage(xhrOptionsMessage, ctx.channel(), out, res, promise);
+    }
 }
