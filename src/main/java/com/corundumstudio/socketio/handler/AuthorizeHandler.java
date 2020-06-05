@@ -26,6 +26,7 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 
+import com.corundumstudio.socketio.messages.HttpMessage;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -187,7 +188,7 @@ public class AuthorizeHandler extends ChannelInboundHandlerAdapter implements Di
             errorData.put("code", 0);
             errorData.put("message", "Transport unknown");
 
-            channel.attr(EncoderHandler.ORIGIN).set(origin);
+            channel.attr(HttpMessage.ORIGIN).set(origin);
             channel.writeAndFlush(new HttpErrorMessage(errorData));
             return false;
         }
