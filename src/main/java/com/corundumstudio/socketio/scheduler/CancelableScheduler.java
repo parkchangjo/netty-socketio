@@ -29,28 +29,28 @@ public abstract class CancelableScheduler {
 
     protected final ConcurrentMap<SchedulerKey, Timeout> scheduledFutures = PlatformDependent.newConcurrentHashMap();
     protected final HashedWheelTimer executorService;
-	
+
     protected volatile ChannelHandlerContext ctx;
 
     public CancelableScheduler() {
         executorService = new HashedWheelTimer();
     }
-    
+
     public CancelableScheduler(ThreadFactory threadFactory) {
         executorService = new HashedWheelTimer(threadFactory);
-    }    
-    
+    }
+
     public void update(ChannelHandlerContext ctx) {
         this.ctx = ctx;
     }
-    
+
     public void cancel(SchedulerKey key) {
     	final Timeout timeout = scheduledFutures.remove(key);
         if (timeout != null) {
             timeout.cancel();
         }
     }
-    
+
     public void schedule(final Runnable runnable, long delay, TimeUnit unit) {
         executorService.newTimeout(new TimerTask() {
             @Override
@@ -59,14 +59,47 @@ public abstract class CancelableScheduler {
             }
         }, delay, unit);
     }
-    
 
-    public abstract void schedule(SchedulerKey key, Runnable runnable, long delay, TimeUnit unit);
 
-    public abstract void scheduleCallback(SchedulerKey key, Runnable runnable, long delay, TimeUnit unit);
+    public void schedule(SchedulerKey key, Runnable runnable, long delay, TimeUnit unit) {
+        Timeout timeout = executorService.newTimeout(new TimerTask() {
+            @Override
+            public void run(Timeout timeout) throws Exception {
+                try {
+                    runnable.run();
+                } finally {
+                    scheduledFutures.remove(key);
+                }
+            }
+        }, delay, unit);
+
+        scheduledFuture(key, timeout);
+    }
+
+    public void scheduleCallback(SchedulerKey key, Runnable runnable, long delay, TimeUnit unit) {
+        Timeout timeout = executorService.newTimeout(new TimerTask() {
+            @Override
+            public void run(Timeout timeout) throws Exception {
+                ctx.executor().execute(new Runnable() {
+                    @Override
+                    public void run() {
+                        try {
+                            runnable.run();
+                        } finally {
+                            scheduledFutures.remove(key);
+                        }
+                    }
+                });
+            }
+        }, delay, unit);
+
+        scheduledFuture(key, timeout);
+      }
 
     public void shutdown() {
         executorService.stop();
     }
-    
+
+    protected abstract void scheduledFuture(final SchedulerKey key, Timeout timeout);
+
 }
