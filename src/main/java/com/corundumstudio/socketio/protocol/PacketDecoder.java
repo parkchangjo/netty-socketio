@@ -30,6 +30,8 @@ import java.util.LinkedList;
 import java.util.UUID;
 
 public class PacketDecoder {
+	
+	
 
     private final UTF8CharsScanner utf8scanner = new UTF8CharsScanner();
 
@@ -37,12 +39,14 @@ public class PacketDecoder {
 
     private final JsonSupport jsonSupport;
     private final AckManager ackManager;
+    
 
     public PacketDecoder(JsonSupport jsonSupport, AckManager ackManager) {
         this.jsonSupport = jsonSupport;
         this.ackManager = ackManager;
     }
 
+    
     private boolean isStringPacket(ByteBuf content) {
         return content.getByte(content.readerIndex()) == 0x0;
     }
@@ -113,31 +117,18 @@ public class PacketDecoder {
         }
         return false;
     }
+    
 
     public Packet decodePackets(ByteBuf buffer, ClientHead client) throws IOException {
         if (isStringPacket(buffer)) {
             // TODO refactor
-            int maxLength = Math.min(buffer.readableBytes(), 10);
-            int headEndIndex = buffer.bytesBefore(maxLength, (byte)-1);
-            if (headEndIndex == -1) {
-                headEndIndex = buffer.bytesBefore(maxLength, (byte)0x3f);
-            }
-            int len = (int) readLong(buffer, headEndIndex);
-
-            ByteBuf frame = buffer.slice(buffer.readerIndex() + 1, len);
-            // skip this frame
-            buffer.readerIndex(buffer.readerIndex() + 1 + len);
-            return decode(client, frame);
+        	Packets isStringPacket = new isStringPacket();
+        	PacketFraming packetframing = new PacketFraming(isStringPacket);
+            return decode(client, packetframing.frame_making(buffer));
         } else if (hasLengthHeader(buffer)) {
-            // TODO refactor
-            int lengthEndIndex = buffer.bytesBefore((byte)':');
-            int lenHeader = (int) readLong(buffer, lengthEndIndex);
-            int len = utf8scanner.getActualLength(buffer, lenHeader);
-
-            ByteBuf frame = buffer.slice(buffer.readerIndex() + 1, len);
-            // skip this frame
-            buffer.readerIndex(buffer.readerIndex() + 1 + len);
-            return decode(client, frame);
+            Packets hasLengthHeaderPacket = new hasLengthHeaderPacket();
+            PacketFraming packetframing = new PacketFraming(hasLengthHeaderPacket);
+            return decode(client, packetframing.frame_making(buffer));
         }
         return decode(client, buffer);
     }
@@ -153,14 +144,17 @@ public class PacketDecoder {
     }
 
     private Packet decode(ClientHead head, ByteBuf frame) throws IOException {
-        if ((frame.getByte(0) == 'b' && frame.getByte(1) == '4')
-                || frame.getByte(0) == 4 || frame.getByte(0) == 1) {
+    	boolean needToParseBinary = ((frame.getByte(0) == 'b' && frame.getByte(1) == '4')
+                || frame.getByte(0) == 4 || frame.getByte(0) == 1);
+    	
+        if (needToParseBinary) {
             return parseBinary(head, frame);
         }
         PacketType type = readType(frame);
         Packet packet = new Packet(type);
-
-        if (type == PacketType.PING) {
+        
+        boolean isPINGtype = (type == PacketType.PING);
+        if (isPINGtype) {
             packet.setData(readString(frame));
             return packet;
         }
