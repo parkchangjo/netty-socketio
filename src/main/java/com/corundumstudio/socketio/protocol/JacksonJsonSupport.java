@@ -315,7 +315,9 @@ public class JacksonJsonSupport implements JsonSupport {
     }
 
     public JacksonJsonSupport(Module... modules) {
+
     	boolean ismodulesRegisterable = (modules != null && modules.length > 0);
+
         if (ismodulesRegisterable) {
             objectMapper.registerModules(modules);
         }

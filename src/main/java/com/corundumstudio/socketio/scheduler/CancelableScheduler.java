@@ -16,21 +16,90 @@
 package com.corundumstudio.socketio.scheduler;
 
 import io.netty.channel.ChannelHandlerContext;
+import io.netty.util.HashedWheelTimer;
+import io.netty.util.Timeout;
+import io.netty.util.TimerTask;
+import io.netty.util.internal.PlatformDependent;
 
+import java.util.concurrent.ConcurrentMap;
+import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.TimeUnit;
 
-public interface CancelableScheduler {
+public abstract class CancelableScheduler {
 
-    void update(ChannelHandlerContext ctx);
+    protected final ConcurrentMap<SchedulerKey, Timeout> scheduledFutures = PlatformDependent.newConcurrentHashMap();
+    protected final HashedWheelTimer executorService;
 
-    void cancel(SchedulerKey key);
+    protected volatile ChannelHandlerContext ctx;
 
-    void scheduleCallback(SchedulerKey key, Runnable runnable, long delay, TimeUnit unit);
+    public CancelableScheduler() {
+        executorService = new HashedWheelTimer();
+    }
 
-    void schedule(Runnable runnable, long delay, TimeUnit unit);
+    public CancelableScheduler(ThreadFactory threadFactory) {
+        executorService = new HashedWheelTimer(threadFactory);
+    }
 
-    void schedule(SchedulerKey key, Runnable runnable, long delay, TimeUnit unit);
+    public void update(ChannelHandlerContext ctx) {
+        this.ctx = ctx;
+    }
 
-    void shutdown();
+    public void cancel(SchedulerKey key) {
+    	final Timeout timeout = scheduledFutures.remove(key);
+        if (timeout != null) {
+            timeout.cancel();
+        }
+    }
+
+    public void schedule(final Runnable runnable, long delay, TimeUnit unit) {
+        executorService.newTimeout(new TimerTask() {
+            @Override
+            public void run(Timeout timeout) throws Exception {
+                runnable.run();
+            }
+        }, delay, unit);
+    }
+
+
+    public void schedule(SchedulerKey key, Runnable runnable, long delay, TimeUnit unit) {
+        Timeout timeout = executorService.newTimeout(new TimerTask() {
+            @Override
+            public void run(Timeout timeout) throws Exception {
+                try {
+                    runnable.run();
+                } finally {
+                    scheduledFutures.remove(key);
+                }
+            }
+        }, delay, unit);
+
+        scheduledFuture(key, timeout);
+    }
+
+    public void scheduleCallback(SchedulerKey key, Runnable runnable, long delay, TimeUnit unit) {
+        Timeout timeout = executorService.newTimeout(new TimerTask() {
+            @Override
+            public void run(Timeout timeout) throws Exception {
+                ctx.executor().execute(new Runnable() {
+                    @Override
+                    public void run() {
+                        try {
+                            runnable.run();
+                        } finally {
+                            scheduledFutures.remove(key);
+                        }
+                    }
+                });
+            }
+        }, delay, unit);
+
+        scheduledFuture(key, timeout);
+      }
+
+    public void shutdown() {
+        executorService.stop();
+    }
+
+    protected abstract void scheduledFuture(final SchedulerKey key, Timeout timeout);
 
 }

@@ -15,31 +15,7 @@
  */
 package com.corundumstudio.socketio.annotation;
 
-import java.lang.annotation.ElementType;
-import java.lang.annotation.Retention;
-import java.lang.annotation.RetentionPolicy;
-import java.lang.annotation.Target;
-
-/**
- * Annotation that defines <b>Event</b> handler.
- * The value is required, and represents event name.
- *
- * Arguments in method:
- *
- *   - SocketIOClient (optional)
- *   - AckRequest (optional)
- *   - Event data (optional)
- *
- */
-@Target(ElementType.METHOD)
-@Retention(RetentionPolicy.RUNTIME)
-public @interface OnEvent {
-
-    /**
-     * Event name
-     * 
-     * @return value
-     */
-    String value();
-
+public interface Command {
+    public abstract void addExecution();
+    public abstract void validateExecution();
 }

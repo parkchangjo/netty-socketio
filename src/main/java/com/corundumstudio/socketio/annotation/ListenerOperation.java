@@ -15,31 +15,22 @@
  */
 package com.corundumstudio.socketio.annotation;
 
-import java.lang.annotation.ElementType;
-import java.lang.annotation.Retention;
-import java.lang.annotation.RetentionPolicy;
-import java.lang.annotation.Target;
+public class ListenerOperation {
+    private Command theCommand;
 
-/**
- * Annotation that defines <b>Event</b> handler.
- * The value is required, and represents event name.
- *
- * Arguments in method:
- *
- *   - SocketIOClient (optional)
- *   - AckRequest (optional)
- *   - Event data (optional)
- *
- */
-@Target(ElementType.METHOD)
-@Retention(RetentionPolicy.RUNTIME)
-public @interface OnEvent {
+    public ListenerOperation(Command theCommand) {
+        setCommand(theCommand);
+    }
 
-    /**
-     * Event name
-     * 
-     * @return value
-     */
-    String value();
+    public void setCommand(Command newCommand) {
+        this.theCommand = newCommand;
+    }
 
+    public void addOperation() {
+        theCommand.addExecution();
+    }
+
+    public void validateOperation() {
+        theCommand.validateExecution();
+    }
 }

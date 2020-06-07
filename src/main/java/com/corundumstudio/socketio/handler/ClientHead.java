@@ -140,7 +140,7 @@ public class ClientHead {
 
         Channel channel = state.getChannel();
         if (channel == null
-                || (transport == Transport.POLLING && channel.attr(EncoderHandler.WRITE_ONCE).get() != null)) {
+                || (transport == Transport.POLLING && channel.attr(OutPacketMessage.WRITE_ONCE).get() != null)) {
             return null;
         }
         return sendPackets(transport, channel);

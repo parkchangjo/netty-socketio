@@ -19,12 +19,13 @@ import java.util.Collection;
 import java.util.UUID;
 
 import com.corundumstudio.socketio.listener.ClientListeners;
+import com.corundumstudio.socketio.listener.ListenerManager;
 
 /**
  * Fully thread-safe.
  *
  */
-public interface SocketIONamespace extends ClientListeners {
+public interface SocketIONamespace  {
 
     String getName();
 
@@ -46,5 +47,7 @@ public interface SocketIONamespace extends ClientListeners {
      * @return client
      */
     SocketIOClient getClient(UUID uuid);
+
+	ListenerManager getListenerManager();
 
 }
