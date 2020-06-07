@@ -15,12 +15,26 @@
  */
 package com.corundumstudio.socketio.messages;
 
+import com.corundumstudio.socketio.protocol.PacketEncoder;
+import io.netty.buffer.ByteBuf;
+import io.netty.channel.ChannelHandlerContext;
+import io.netty.channel.ChannelPromise;
+import io.netty.handler.codec.http.HttpResponseStatus;
+import io.netty.util.CharsetUtil;
+
 import java.util.UUID;
 
 public class XHRPostMessage extends HttpMessage {
+    private static final byte[] OK = "ok".getBytes(CharsetUtil.UTF_8);
 
     public XHRPostMessage(String origin, UUID sessionId) {
         super(origin, sessionId);
     }
 
+    public void messageWrite(Object message, ChannelHandlerContext ctx, ChannelPromise promise, PacketEncoder encoder) throws Exception {
+        XHRPostMessage xhrPostMessage = (XHRPostMessage) message;
+        ByteBuf out = encoder.allocateBuffer(ctx.alloc());
+        out.writeBytes(OK);
+        sendMessage(xhrPostMessage, ctx.channel(), out, "text/html", promise, HttpResponseStatus.OK);
+    }
 }

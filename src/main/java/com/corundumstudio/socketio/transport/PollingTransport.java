@@ -20,6 +20,8 @@ import com.corundumstudio.socketio.handler.AuthorizeHandler;
 import com.corundumstudio.socketio.handler.ClientHead;
 import com.corundumstudio.socketio.handler.ClientsBox;
 import com.corundumstudio.socketio.handler.EncoderHandler;
+import com.corundumstudio.socketio.messages.HttpMessage;
+import com.corundumstudio.socketio.messages.OutPacketMessage;
 import com.corundumstudio.socketio.messages.PacketsMessage;
 import com.corundumstudio.socketio.messages.XHROptionsMessage;
 import com.corundumstudio.socketio.messages.XHRPostMessage;
@@ -35,6 +37,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
+import java.io.OutputStream;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -73,14 +76,14 @@ public class PollingTransport extends ChannelInboundHandlerAdapter {
                 List<String> b64 = parameters.get("b64");
 
                 String origin = req.headers().get(HttpHeaderNames.ORIGIN);
-                ctx.channel().attr(EncoderHandler.ORIGIN).set(origin);
+                ctx.channel().attr(HttpMessage.ORIGIN).set(origin);
 
                 String userAgent = req.headers().get(HttpHeaderNames.USER_AGENT);
-                ctx.channel().attr(EncoderHandler.USER_AGENT).set(userAgent);
+                ctx.channel().attr(HttpMessage.USER_AGENT).set(userAgent);
 
                 if (isNotNull(j)) {
                     Integer index = Integer.valueOf(j.get(0));
-                    ctx.channel().attr(EncoderHandler.JSONP_INDEX).set(index);
+                    ctx.channel().attr(OutPacketMessage.JSONP_INDEX).set(index);
                 }
                 if (isNotNull(b64)) {
                     String flag = b64.get(0);
@@ -90,7 +93,7 @@ public class PollingTransport extends ChannelInboundHandlerAdapter {
                         flag = "0";
                     }
                     Integer enable = Integer.valueOf(flag);
-                    ctx.channel().attr(EncoderHandler.B64).set(enable == 1);
+                    ctx.channel().attr(OutPacketMessage.B64).set(enable == 1);
                 }
 
                 try {
@@ -165,9 +168,9 @@ public class PollingTransport extends ChannelInboundHandlerAdapter {
          // release POST response before message processing
          ctx.channel().writeAndFlush(new XHRPostMessage(origin, sessionId));
 
-         Boolean b64 = ctx.channel().attr(EncoderHandler.B64).get();
+         Boolean b64 = ctx.channel().attr(OutPacketMessage.B64).get();
          if (b64 != null && b64) {
-             Integer jsonIndex = ctx.channel().attr(EncoderHandler.JSONP_INDEX).get();
+             Integer jsonIndex = ctx.channel().attr(OutPacketMessage.JSONP_INDEX).get();
              content = decoder.preprocessJson(jsonIndex, content);
          }
 
