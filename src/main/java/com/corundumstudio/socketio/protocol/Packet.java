@@ -132,7 +132,8 @@ public class Packet implements Serializable {
         this.attachments = new ArrayList<ByteBuf>(attachmentsCount);
     }
     public void addAttachment(ByteBuf attachment) {
-        if (this.attachments.size() < attachmentsCount) {
+    	boolean attchmentSizeEnough = (this.attachments.size() < attachmentsCount);
+        if (attchmentSizeEnough) {
             this.attachments.add(attachment);
         }
     }
