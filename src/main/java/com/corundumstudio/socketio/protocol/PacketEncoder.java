@@ -251,7 +251,69 @@ public class PacketEncoder {
 
                 case MESSAGE: {
 
-                    MessageEncode(packet, allocator, buf);
+                    ByteBuf encBuf = null;
+
+                    if (packet.getSubType() == PacketType.ERROR) {
+                        encBuf = allocateBuffer(allocator);
+
+                        ByteBufOutputStream out = new ByteBufOutputStream(encBuf);
+                        jsonSupport.writeValue(out, packet.getData());
+                    }
+
+                    if (packet.getSubType() == PacketType.EVENT
+                            || packet.getSubType() == PacketType.ACK) {
+
+                        List<Object> values = new ArrayList<Object>();
+                        if (packet.getSubType() == PacketType.EVENT) {
+                            values.add(packet.getName());
+                        }
+
+                        encBuf = allocateBuffer(allocator);
+
+                        List<Object> args = packet.getData();
+                        values.addAll(args);
+                        ByteBufOutputStream out = new ByteBufOutputStream(encBuf);
+                        jsonSupport.writeValue(out, values);
+
+                        if (!jsonSupport.getArrays().isEmpty()) {
+                            packet.initAttachments(jsonSupport.getArrays().size());
+                            for (byte[] array : jsonSupport.getArrays()) {
+                                packet.addAttachment(Unpooled.wrappedBuffer(array));
+                            }
+                            packet.setSubType(packet.getSubType() == PacketType.ACK
+                                    ? PacketType.BINARY_ACK : PacketType.BINARY_EVENT);
+                        }
+                    }
+
+                    byte subType = toChar(packet.getSubType().getValue());
+                    buf.writeByte(subType);
+
+                    if (packet.hasAttachments()) {
+                        byte[] ackId = toChars(packet.getAttachments().size());
+                        buf.writeBytes(ackId);
+                        buf.writeByte('-');
+                    }
+
+                    if (packet.getSubType() == PacketType.CONNECT) {
+                        if (!packet.getNsp().isEmpty()) {
+                            buf.writeBytes(packet.getNsp().getBytes(CharsetUtil.UTF_8));
+                        }
+                    } else {
+                        if (!packet.getNsp().isEmpty()) {
+                            buf.writeBytes(packet.getNsp().getBytes(CharsetUtil.UTF_8));
+                            buf.writeByte(',');
+                        }
+                    }
+
+                    if (packet.getAckId() != null) {
+                        byte[] ackId = toChars(packet.getAckId());
+                        buf.writeBytes(ackId);
+                    }
+
+                    if (encBuf != null) {
+                        buf.writeBytes(encBuf);
+                        encBuf.release();
+                    }
 
                     break;
                 }
@@ -269,72 +331,6 @@ public class PacketEncoder {
             }
         }
     }
-
-	public void MessageEncode(Packet packet, ByteBufAllocator allocator, ByteBuf buf) throws IOException {
-		ByteBuf encBuf = null;
-
-		if (packet.getSubType() == PacketType.ERROR) {
-		    encBuf = allocateBuffer(allocator);
-
-		    ByteBufOutputStream out = new ByteBufOutputStream(encBuf);
-		    jsonSupport.writeValue(out, packet.getData());
-		}
-
-		if (packet.getSubType() == PacketType.EVENT
-		        || packet.getSubType() == PacketType.ACK) {
-
-		    List<Object> values = new ArrayList<Object>();
-		    if (packet.getSubType() == PacketType.EVENT) {
-		        values.add(packet.getName());
-		    }
-
-		    encBuf = allocateBuffer(allocator);
-
-		    List<Object> args = packet.getData();
-		    values.addAll(args);
-		    ByteBufOutputStream out = new ByteBufOutputStream(encBuf);
-		    jsonSupport.writeValue(out, values);
-
-		    if (!jsonSupport.getArrays().isEmpty()) {
-		        packet.initAttachments(jsonSupport.getArrays().size());
-		        for (byte[] array : jsonSupport.getArrays()) {
-		            packet.addAttachment(Unpooled.wrappedBuffer(array));
-		        }
-		        packet.setSubType(packet.getSubType() == PacketType.ACK
-		                ? PacketType.BINARY_ACK : PacketType.BINARY_EVENT);
-		    }
-		}
-
-		byte subType = toChar(packet.getSubType().getValue());
-		buf.writeByte(subType);
-
-		if (packet.hasAttachments()) {
-		    byte[] ackId = toChars(packet.getAttachments().size());
-		    buf.writeBytes(ackId);
-		    buf.writeByte('-');
-		}
-
-		if (packet.getSubType() == PacketType.CONNECT) {
-		    if (!packet.getNsp().isEmpty()) {
-		        buf.writeBytes(packet.getNsp().getBytes(CharsetUtil.UTF_8));
-		    }
-		} else {
-		    if (!packet.getNsp().isEmpty()) {
-		        buf.writeBytes(packet.getNsp().getBytes(CharsetUtil.UTF_8));
-		        buf.writeByte(',');
-		    }
-		}
-
-		if (packet.getAckId() != null) {
-		    byte[] ackId = toChars(packet.getAckId());
-		    buf.writeBytes(ackId);
-		}
-
-		if (encBuf != null) {
-		    buf.writeBytes(encBuf);
-		    encBuf.release();
-		}
-	}
 
     public static int find(ByteBuf buffer, ByteBuf searchValue) {
         for (int i = buffer.readerIndex(); i < buffer.readerIndex() + buffer.readableBytes(); i++) {
