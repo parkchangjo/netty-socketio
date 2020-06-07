@@ -34,52 +34,19 @@ import java.util.concurrent.TimeUnit;
 public class HashedWheelTimeoutScheduler extends CancelableScheduler {
 
     private volatile ChannelHandlerContext ctx;
-    
+
     public HashedWheelTimeoutScheduler() {
        super();
     }
-    
+
     public HashedWheelTimeoutScheduler(ThreadFactory threadFactory) {
         super(threadFactory);
     }
 
     @Override
-    public void scheduleCallback(final SchedulerKey key, final Runnable runnable, long delay, TimeUnit unit) {
-        Timeout timeout = executorService.newTimeout(new TimerTask() {
-            @Override
-            public void run(Timeout timeout) throws Exception {
-                ctx.executor().execute(new Runnable() {
-                    @Override
-                    public void run() {
-                        try {
-                            runnable.run();
-                        } finally {
-                            scheduledFutures.remove(key);
-                        }
-                    }
-                });
-            }
-        }, delay, unit);
-
+    protected void scheduledFuture(final SchedulerKey key, Timeout timeout) {
         replaceScheduledFuture(key, timeout);
     }
-
-    @Override
-    public void schedule(final SchedulerKey key, final Runnable runnable, long delay, TimeUnit unit) {
-        Timeout timeout = executorService.newTimeout(new TimerTask() {
-            @Override
-            public void run(Timeout timeout) throws Exception {
-                try {
-                    runnable.run();
-                } finally {
-                    scheduledFutures.remove(key);
-                }
-            }
-        }, delay, unit);
-
-        replaceScheduledFuture(key, timeout);
-    }
-
 
     private void replaceScheduledFuture(final SchedulerKey key, final Timeout newTimeout) {
         final Timeout oldTimeout;
@@ -97,4 +64,5 @@ public class HashedWheelTimeoutScheduler extends CancelableScheduler {
             oldTimeout.cancel();
         }
     }
+
 }

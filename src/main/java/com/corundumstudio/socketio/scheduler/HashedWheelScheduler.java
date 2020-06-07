@@ -29,45 +29,13 @@ public class HashedWheelScheduler extends CancelableScheduler {
     public HashedWheelScheduler() {
         super();
     }
-    
+
     public HashedWheelScheduler(ThreadFactory threadFactory) {
         super(threadFactory);
     }
 
     @Override
-    public void scheduleCallback(final SchedulerKey key, final Runnable runnable, long delay, TimeUnit unit) {
-        Timeout timeout = executorService.newTimeout(new TimerTask() {
-            @Override
-            public void run(Timeout timeout) throws Exception {
-                ctx.executor().execute(new Runnable() {
-                    @Override
-                    public void run() {
-                        try {
-                            runnable.run();
-                        } finally {
-                            scheduledFutures.remove(key);
-                        }
-                    }
-                });
-            }
-        }, delay, unit);
-
-        addScheduledFuture(key, timeout);
-    }
-
-    @Override
-    public void schedule(final SchedulerKey key, final Runnable runnable, long delay, TimeUnit unit) {
-        Timeout timeout = executorService.newTimeout(new TimerTask() {
-            @Override
-            public void run(Timeout timeout) throws Exception {
-                try {
-                    runnable.run();
-                } finally {
-                    scheduledFutures.remove(key);
-                }
-            }
-        }, delay, unit);
-
+    protected void scheduledFuture(final SchedulerKey key, Timeout timeout) {
         addScheduledFuture(key, timeout);
     }
 
@@ -77,9 +45,9 @@ public class HashedWheelScheduler extends CancelableScheduler {
     }
 
     private void addScheduledFuture(final SchedulerKey key, Timeout timeout){
-        if (!timeout.isExpired()) {
-            scheduledFutures.put(key, timeout);
-        }
+    if (!timeout.isExpired()) {
+        scheduledFutures.put(key, timeout);
     }
-    
+}
+
 }
